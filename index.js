@@ -67,4 +67,38 @@ app.post("/validar-key", (req, res) => {
   if (d.hwid === "") {
     d.hwid = hwid;
     salvarKeys(keys);
-    return res.json({
+    return res.json({ ok: true, motivo: "OK_NOVO" });
+  }
+  if (d.hwid !== hwid) return res.json({ ok: false, motivo: "HWID_ERRADO" });
+  return res.json({ ok: true, motivo: "OK" });
+});
+
+app.post("/cancelar-key", (req, res) => {
+  const { key, secret } = req.body;
+  if (secret !== SECRET) return res.json({ ok: false, erro: "Sem permissao" });
+  const keys = carregarKeys();
+  if (!keys[key]) return res.json({ ok: false, erro: "Key nao encontrada" });
+  keys[key].bloqueada = true;
+  salvarKeys(keys);
+  res.json({ ok: true });
+});
+
+app.get("/status-key/:key", (req, res) => {
+  const keys = carregarKeys();
+  const d = keys[req.params.key];
+  if (!d) return res.json({ ok: false, motivo: "INVALIDA" });
+  const agora = Math.floor(Date.now() / 1000);
+  if (d.bloqueada) return res.json({ ok: false, motivo: "BLOQUEADA", dados: d });
+  if (d.expira !== 999999999999 && agora > d.expira) return res.json({ ok: false, motivo: "EXPIRADA", dados: d });
+  if (d.hwid === "") return res.json({ ok: true, motivo: "NAO_RESGATADA", dados: d });
+  return res.json({ ok: true, motivo: "ATIVA", dados: d });
+});
+
+app.get("/", (req, res) => {
+  res.json({ status: "DIAS Store API online" });
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log("DIAS Store API rodando na porta " + PORT);
+});
